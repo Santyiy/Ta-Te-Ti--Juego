@@ -3,14 +3,6 @@
 Juego en Java para dos jugadores, con servidor, clientes, sockets TCP e hilos.
 El servidor controla las jugadas y puede manejar varias partidas al mismo tiempo.
 
-## Compilar
-
-Se necesita JDK 11 o superior. Desde la carpeta del proyecto:
-
-```powershell
-javac -encoding UTF-8 --release 11 -d out src/redes/*.java pruebas/redes/*.java
-```
-
 ## Jugar
 
 Primero iniciar el servidor en una terminal:
