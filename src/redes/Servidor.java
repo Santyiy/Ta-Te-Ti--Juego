@@ -18,9 +18,11 @@ import java.util.concurrent.Semaphore;
 public final class Servidor {
     private final Queue<Jugador> espera = new ArrayDeque<>();
     private final Set<Jugador> conectados = ConcurrentHashMap.newKeySet();
+    // Cada conexion ocupa un cupo hasta que el jugador se retira.
     private final Semaphore cupos = new Semaphore(50);
     private final ExecutorService hilos = Executors.newCachedThreadPool();
 
+    // Solo un hilo a la vez puede sacar o agregar jugadores a la cola.
     synchronized void emparejar(Jugador jugador) {
         Jugador rival = espera.poll();
         if (rival == null) {
@@ -28,6 +30,7 @@ public final class Servidor {
             jugador.enviar("ESPERA: Buscando otro jugador...");
         } else {
             Partida partida = new Partida(rival, jugador);
+            // La partida debe terminar de iniciarse antes de recibir jugadas.
             synchronized (partida) {
                 rival.asignar(partida);
                 jugador.asignar(partida);
@@ -36,6 +39,7 @@ public final class Servidor {
         }
     }
 
+    // Limpia la espera o avisa del abandono y devuelve el cupo de la conexion.
     void retirar(Jugador jugador) {
         synchronized (this) { espera.remove(jugador); }
         Partida partida = jugador.partida();
@@ -45,6 +49,7 @@ public final class Servidor {
 
     private void ejecutar(int puerto) throws IOException {
         try (ServerSocket servidor = new ServerSocket(puerto)) {
+            // Al cerrar con Ctrl+C, tambien se cierran los sockets de los clientes.
             Thread cierre = new Thread(() -> {
                 try { servidor.close(); } catch (IOException ignored) { }
                 for (Jugador jugador : conectados) jugador.cerrar();
@@ -54,6 +59,7 @@ public final class Servidor {
             System.out.println("Servidor de Ta-Te-Ti escuchando en el puerto " + puerto + ".");
             System.out.println("Presiona Ctrl+C para detenerlo. Limite: 50 jugadores conectados.");
             while (!servidor.isClosed()) {
+                // accept() espera hasta que se conecte un cliente.
                 Socket socket = servidor.accept();
                 if (!cupos.tryAcquire()) {
                     try (Socket rechazado = socket) {
@@ -65,6 +71,7 @@ public final class Servidor {
                 try {
                     Jugador jugador = new Jugador(socket, this);
                     conectados.add(jugador);
+                    // Atiende al jugador en otro hilo y vuelve a aceptar conexiones.
                     hilos.execute(jugador);
                 } catch (IOException e) {
                     cupos.release();

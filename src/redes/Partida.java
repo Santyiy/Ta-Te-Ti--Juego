@@ -1,6 +1,6 @@
 package redes;
 
-/** Cada instancia tiene su propio tablero. Su monitor protege los turnos. */
+/** Controla una partida de dos jugadores con su propio tablero. */
 final class Partida {
     private final Jugador[] jugadores;
     private final Tablero tablero = new Tablero();
@@ -19,6 +19,7 @@ final class Partida {
         publicarEstado();
     }
 
+    // synchronized evita que dos hilos modifiquen la partida al mismo tiempo.
     synchronized void mover(Jugador jugador, String entrada) {
         if (terminada) return;
         if (jugadores[turno] != jugador) {
@@ -44,11 +45,13 @@ final class Partida {
             todos(tablero.dibujar());
             finalizar("FIN: Empate.");
         } else {
+            // Alterna el indice del jugador: de 0 a 1 o de 1 a 0.
             turno = 1 - turno;
             publicarEstado();
         }
     }
 
+    // Si la partida seguia en juego, el rival gana por abandono.
     synchronized void desconectar(Jugador jugador) {
         if (!terminada) {
             Jugador restante = jugadores[0] == jugador ? jugadores[1] : jugadores[0];
@@ -71,6 +74,7 @@ final class Partida {
     }
 
     private void finalizar(String mensaje) {
+        // Marcarla primero evita volver a finalizar cuando se cierren los sockets.
         terminada = true;
         todos(mensaje);
         for (Jugador jugador : jugadores) jugador.cerrar();

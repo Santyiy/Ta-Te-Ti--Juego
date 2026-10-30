@@ -13,11 +13,13 @@ final class Jugador implements Runnable {
     private final Servidor servidor;
     private final PrintWriter salida;
     private String nombre = "Jugador";
+    // volatile permite que el hilo del jugador vea la partida asignada por otro hilo.
     private volatile Partida partida;
 
     Jugador(Socket socket, Servidor servidor) throws IOException {
         this.socket = socket;
         this.servidor = servidor;
+        // true activa el envio inmediato al usar println; la red usa UTF-8.
         salida = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8);
     }
 
@@ -34,6 +36,7 @@ final class Jugador implements Runnable {
     public void run() {
         try (BufferedReader entrada = new BufferedReader(
                 new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))) {
+            // Tiene 30 segundos para enviar el nombre.
             socket.setSoTimeout(30000);
             enviar("NOMBRE: Envia tu nombre (1 a 20 letras, numeros, espacios, _ o -).");
             String recibido = entrada.readLine();
@@ -44,10 +47,12 @@ final class Jugador implements Runnable {
                 return;
             }
             nombre = recibido;
+            // Durante el juego no hay limite de tiempo para responder.
             socket.setSoTimeout(0);
             enviar("BIENVENIDO: " + nombre + ". Comandos: 1-9, /ayuda, /salir.");
             servidor.emparejar(this);
             String mensaje;
+            // Cada linea recibida es un comando o una casilla; null indica cierre.
             while ((mensaje = entrada.readLine()) != null) {
                 mensaje = mensaje.trim();
                 if (mensaje.equalsIgnoreCase("/salir")) {
@@ -66,6 +71,7 @@ final class Jugador implements Runnable {
         } catch (IOException e) {
             System.out.println("Conexion cerrada de " + nombre + ": " + e.getMessage());
         } finally {
+            // Se ejecuta tanto al salir normalmente como si hay un error de conexion.
             cerrar();
             servidor.retirar(this);
         }

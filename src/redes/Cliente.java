@@ -20,16 +20,19 @@ public final class Cliente {
             int puerto = args.length > 1 ? Integer.parseInt(args[1]) : 5000;
             if (puerto < 1 || puerto > 65535) throw new IllegalArgumentException();
             try (Socket socket = new Socket()) {
+                // Intenta conectarse al servidor durante un maximo de 5 segundos.
                 socket.connect(new InetSocketAddress(host, puerto), 5000);
                 System.out.println("Conectado a " + host + ":" + puerto + ".");
                 BufferedReader entrada = new BufferedReader(
                     new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
                 PrintWriter salida = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8);
+                // El teclado tiene su hilo para no frenar los mensajes del servidor.
                 Thread teclado = new Thread(() -> enviarTeclado(socket, salida), "teclado");
                 // Si termina la partida, el proceso puede finalizar aunque el teclado este esperando.
                 teclado.setDaemon(true);
                 teclado.start();
                 String mensaje;
+                // El hilo principal muestra lo que llega hasta que el servidor cierra.
                 while ((mensaje = entrada.readLine()) != null) System.out.println(mensaje);
                 System.out.println("Conexion finalizada. Ejecuta el cliente otra vez para volver a jugar.");
             }
@@ -48,6 +51,7 @@ public final class Cliente {
             while ((linea = consola.readLine()) != null) {
                 salida.println(linea);
                 if (linea.trim().equalsIgnoreCase("/salir")) {
+                    // Deja de enviar, pero permite recibir la despedida del servidor.
                     socket.shutdownOutput();
                     return;
                 }
